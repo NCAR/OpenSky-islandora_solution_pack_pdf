@@ -19,12 +19,13 @@
 function islandora_pdf_pdf_upload_form(array $form, array &$form_state) {
   $upload_size = min((int) ini_get('post_max_size'), (int) ini_get('upload_max_filesize'));
   $extensions = array('pdf');
+  $upload_required = variable_get('islandora_require_obj_upload', TRUE);
   $form = array();
   $form['file'] = array(
     '#title' => t('PDF File'),
     '#type' => 'managed_file',
-    '#required' => TRUE,
-    '#description' => t('Select file to upload.<br/>Files must be less than <b>@size MB.</b><br/>Allowed file types: <b>@ext.</b>', array('@size' => $upload_size, '@ext' => $extensions[0])),
+    '#required' => $upload_required,
+    '#description' => t('Select file to upload.<br/>Files must be less than <strong>@size MB.</strong><br/>Allowed file types: <strong>@ext.</strong>', array('@size' => $upload_size, '@ext' => $extensions[0])),
     '#default_value' => isset($form_state['values']['files']) ? $form_state['values']['files'] : NULL,
     '#upload_location' => 'temporary://',
     '#upload_validators' => array(
@@ -44,7 +45,7 @@ function islandora_pdf_pdf_upload_form(array $form, array &$form_state) {
       '#title' => t('PDF text'),
       '#type' => 'managed_file',
       '#required' => FALSE,
-      '#description' => t('Select text file to upload.<br/>Files must be less than <b>@size MB.</b><br/>Allowed file types: <b>@ext.</b><br />This file is optional.', array('@size' => $upload_size, '@ext' => 'txt')),
+      '#description' => t('Select text file to upload.<br/>Files must be less than <strong>@size MB.</strong><br/>Allowed file types: <strong>@ext.</strong><br />This file is optional.', array('@size' => $upload_size, '@ext' => 'txt')),
       '#default_value' => isset($form_state['values']['files']) ? $form_state['values']['files'] : NULL,
       '#upload_location' => 'temporary://',
       '#upload_validators' => array(
@@ -71,19 +72,21 @@ function islandora_pdf_pdf_upload_form(array $form, array &$form_state) {
  *   The drupal form state.
  */
 function islandora_pdf_pdf_upload_form_submit(array $form, array &$form_state) {
-  $object = $form_state['islandora']['objects'][0];
-  if (empty($object['OBJ'])) {
-    $ds = $object->constructDatastream('OBJ', 'M');
-    $object->ingestDatastream($ds);
+  $object = islandora_ingest_form_get_object($form_state);
+  if ($form_state['values']['file']) {
+    if (empty($object['OBJ'])) {
+      $ds = $object->constructDatastream('OBJ', 'M');
+      $object->ingestDatastream($ds);
+    }
+    else {
+      $ds = $object['OBJ'];
+    }
+    $pdf_file = file_load($form_state['values']['file']);
+    $pdf_path = drupal_realpath($pdf_file->uri);
+    $ds->setContentFromFile($pdf_path, FALSE);
+    $ds->label = $pdf_file->filename;
+    $ds->mimetype = $pdf_file->filemime;
   }
-  else {
-    $ds = $object['OBJ'];
-  }
-  $pdf_file = file_load($form_state['values']['file']);
-  $pdf_path = drupal_realpath($pdf_file->uri);
-  $ds->setContentFromFile($pdf_path, FALSE);
-  $ds->label = $pdf_file->filename;
-  $ds->mimetype = $pdf_file->filemime;
 
   if (isset($form_state['values']['text']) && ($form_state['values']['text'] > 0)) {
     if (empty($object['FULL_TEXT'])) {
