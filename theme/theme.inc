@@ -73,12 +73,22 @@ function islandora_pdf_preprocess_islandora_pdf(&$variables) {
         'path' => $preview_url,
       );
       $variables['islandora_preview_img'] = theme('image', $params);
-      $variables['islandora_content'] = l($variables['islandora_preview_img'], $variables['islandora_full_url'], array('html' => TRUE));
+      
       // Sanitize this object name a bit.
       $sanitized_label = preg_replace('/[^A-Za-z0-9_\-]|\.pdf$/', '_', $islandora_object->label);
       $download_url = 'islandora/object/' . $islandora_object->id . '/datastream/OBJ/download/' . $sanitized_label . '.pdf';
-      $download_text = t("Download pdf");
-      $variables['islandora_download_link'] = l($download_text, $download_url, array('attributes' => array('class' => array('islandora-pdf-link'))));
+      // Added code to not have links to embargoed items: Dennis Ogg
+      if (isset($islandora_object['OBJ']) && islandora_datastream_access(ISLANDORA_VIEW_OBJECTS, $islandora_object['OBJ'])) {
+        $download_text = t("Download pdf");
+        $variables['islandora_download_link'] = l($download_text, $download_url, array('attributes' => array('class' => array('islandora-pdf-link'))));
+        $variables['islandora_content'] = l($variables['islandora_preview_img'], $variables['islandora_full_url'], array('html' => TRUE));
+      }
+      else {
+        $variables['islandora_content'] = $variables['islandora_preview_img'];  
+          
+      }
+      {
+      }
     }
 
   }
